@@ -2,57 +2,66 @@
 
 import * as React from "react"
 import { GripVerticalIcon } from "lucide-react"
-import {
-  PanelGroup,
-  Panel,
-  PanelResizeHandle
-} from "react-resizable-panels"
 
-import { cn } from "@/lib/utils"
-
-function ResizablePanelGroup({
-  className,
-  direction = "horizontal",
-  ...props
-}: React.ComponentProps<typeof PanelGroup>) {
-  return (
-    <PanelGroup
-      direction={direction}
-      className={cn(
-        "flex h-full w-full data-[direction=vertical]:flex-col",
-        className
-      )}
-      {...props}
-    />
-  )
+type ResizableProps = {
+  left: React.ReactNode
+  right: React.ReactNode
+  initial?: number
+  className?: string
 }
 
-function ResizablePanel(props: React.ComponentProps<typeof Panel>) {
-  return <Panel {...props} />
-}
-
-function ResizableHandle({
-  withHandle,
+export function Resizable({
+  left,
+  right,
+  initial = 50,
   className,
-  ...props
-}: React.ComponentProps<typeof PanelResizeHandle> & {
-  withHandle?: boolean
-}) {
+}: ResizableProps) {
+  const containerRef = React.useRef<HTMLDivElement>(null)
+  const [size, setSize] = React.useState(initial)
+
+  const startDrag = (e: React.MouseEvent) => {
+    e.preventDefault()
+    const startX = e.clientX
+    const container = containerRef.current
+    if (!container) return
+
+    const { width } = container.getBoundingClientRect()
+    const startWidth = (size / 100) * width
+
+    const onMove = (ev: MouseEvent) => {
+      const delta = ev.clientX - startX
+      const next = ((startWidth + delta) / width) * 100
+      setSize(Math.min(90, Math.max(10, next)))
+    }
+
+    const onUp = () => {
+      window.removeEventListener("mousemove", onMove)
+      window.removeEventListener("mouseup", onUp)
+    }
+
+    window.addEventListener("mousemove", onMove)
+    window.addEventListener("mouseup", onUp)
+  }
+
   return (
-    <PanelResizeHandle
-      className={cn(
-        "bg-border relative flex w-px items-center justify-center data-[direction=vertical]:h-px data-[direction=vertical]:w-full",
-        className
-      )}
-      {...props}
+    <div
+      ref={containerRef}
+      className={`flex w-full h-full select-none ${className ?? ""}`}
     >
-      {withHandle && (
-        <div className="bg-border z-10 flex h-4 w-3 items-center justify-center rounded-xs border">
-          <GripVerticalIcon className="size-2.5" />
-        </div>
-      )}
-    </PanelResizeHandle>
+      <div style={{ width: `${size}%` }} className="h-full">
+        {left}
+      </div>
+
+      <div
+        onMouseDown={startDrag}
+        className="w-2 bg-border hover:bg-muted flex items-center justify-center cursor-col-resize"
+      >
+        <GripVerticalIcon className="h-4 w-4 text-muted-foreground" />
+      </div>
+
+      <div style={{ width: `${100 - size}%` }} className="h-full">
+        {right}
+      </div>
+    </div>
   )
 }
-
-export { ResizablePanelGroup, ResizablePanel, ResizableHandle }
